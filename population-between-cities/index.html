@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="description" content="Pirámides Poblacionales del AMG" />
+<script src="http://d3js.org/d3.v3.min.js"></script>
+  <script src="../datajson/population.js"></script>
+  <title>Pirámides Poblacionales AMG</title>
+<style id="jsbin-css">
+svg {
+  border: 0px solid #ccc;
+  display:block;
+  margin:0 auto;
+}
+
+.axis line,
+.axis path {
+  shape-rendering: crispEdges;
+  fill: transparent;
+  stroke: #555;
+}
+.axis text {
+  font-size: 11px;
+}
+
+.bar.left {
+  fill: white; 
+  stroke: #1a316b;
+  stroke-width: 1;
+}
+
+.bar.right {
+  fill: white;
+  stroke: #c71585;
+  stroke-width: 1;
+}
+.bar.left2 {
+  fill: #97a8d2;
+}
+.bar.right2 {
+  fill: #e19ac4;
+}
+
+div.tooltip {
+  position: absolute;	
+  text-align: center;	
+  width: 150px;	
+  height: 36px;		
+  padding: 2px;	
+  font: 12px sans-serif;	
+  background: silver;	
+  border: 1px;					
+  border-radius: 8px;
+ /*  pointer-events: none;	This line needs to be removed */	
+}
+
+</style>
+</head>
+<body>
+  <h3 align="center"><strong>Comparativo Poblacional del AMG quinquenal según sexo 1970-2010. </strong> </h3>
+       <fieldset style="display: block;">
+          <legend>Seleccione Municipios a Comparar</legend>
+         <p style="display: inline">
+             <table border="0" cellpadding="1" cellspacing="1"  align="center">
+	<tbody>
+     
+		<tr>
+          <td></td>
+			<td style="width: 20px; border: 2px solid #1a316b;"></td>
+            <td></td>
+			<td style="width: 20px; border: 2px solid #c71585; "></td>
+          <td>&nbsp;&nbsp;<select id = "list1">
+               <option value = "1">El Salto</option>
+               <option value = "2">Guadalajara</option>
+               <option value = "3">Ixtlahuacán de los Membrillos</option>
+               <option value = "4">Juanacatlán</option>
+               <option value = "5">San Pedro Tlaquepaque</option>
+               <option value = "6">Tlajomulco de Zúñiga</option>
+               <option value = "7">Tonalá</option>
+               <option value = "8">Zapopan</option>
+             </select>
+        
+             <select id = "list3">
+               <option value = "1">1970 </option>
+               <option value = "2">1980</option>
+               <option value = "3">1990</option>
+               <option value = "4">1995</option>
+               <option value = "5">2000 </option>
+               <option value = "6">2005</option>
+               <option value = "7">2010</option>
+             </select>
+           
+          </td>
+	
+			<td style="width: 20px; background-color: rgb(151, 168, 210); ; border: 2px solid #97a8d2;"></td>
+          <td></td>
+			<td style="width: 20px; background-color: rgb(225, 154, 196); ; border: 2px solid #e19ac4;"></td>
+          <td>&nbsp;&nbsp;&nbsp;<select id = "list2">
+               <option value = "1">El Salto</option>
+               <option value = "2">Guadalajara</option>
+               <option value = "3">Ixtlahuacán de los Membrillos</option>
+               <option value = "4">Juanacatlán</option>
+               <option value = "5">San Pedro Tlaquepaque</option>
+               <option value = "6">Tlajomulco de Zúñiga</option>
+               <option value = "7">Tonalá</option>
+               <option value = "8">Zapopan</option>
+             </select>
+      
+             <select id = "list4">
+               <option value = "1">1970 </option>
+               <option value = "2">1980</option>
+               <option value = "3">1990</option>
+               <option value = "4">1995</option>
+               <option value = "5">2000 </option>
+               <option value = "6">2005</option>
+               <option value = "7">2010</option>
+             </select>
+           </td>
+          <td> <button onclick="generaPiramidePoblacional()">Generar</button> </td>
+	</tbody>
+</table>
+       </fieldset>
+<div style="height:20px;"></div>
+  
+<script id="jsbin-javascript">
+function intercambiar()
+{
+ var op1 = document.getElementById('list1').selectedIndex;
+  
+  var op2 = document.getElementById('list2').selectedIndex;
+
+ var an1 = document.getElementById('list3').selectedIndex;
+  
+  var an2 = document.getElementById('list4').selectedIndex;
+  document.getElementById("list1").selectedIndex = op2;
+   document.getElementById("list2").selectedIndex = op1;
+    document.getElementById("list3").selectedIndex = an2;
+   document.getElementById("list4").selectedIndex = an1;
+  generaPiramidePoblacional();
+}
+
+function generaPiramidePoblacional()
+{
+d3.select('svg').remove();
+  // SET UP DIMENSIONS
+var w = 500,
+    h = 300;
+
+// margin.middle is distance from center line to each y-axis
+var margin = {
+  top: 20,
+  right: 20,
+  bottom: 24,
+  left: 20,
+  middle: 28
+};
+    
+// the width of each side of the chart
+var regionWidth = w/2 - margin.middle;
+
+// these are the x-coordinates of the y-axes
+var pointA = regionWidth,
+    pointB = w - regionWidth;
+var anio1 = document.getElementById('list3').options[document.getElementById('list3').selectedIndex].text;
+
+ var anio2 = document.getElementById('list4').options[document.getElementById('list4').selectedIndex].text;
+  
+  // some contrived data
+var exampleData = getPopulation(document.getElementById('list1').options[document.getElementById('list1').selectedIndex].value, anio1); 
+
+  var exampleData2 = getPopulation(document.getElementById('list2').options[document.getElementById('list2').selectedIndex].value, anio2); 
+
+
+// GET THE TOTAL POPULATION SIZE AND CREATE A FUNCTION FOR RETURNING THE PERCENTAGE
+var totalPopulation = d3.sum(exampleData, function(d) { return d; }),
+    percentage = function(d) { return d/1000; };
+  
+var totalPopulation2 = d3.sum(exampleData2, function(d) { return d; }),
+    percentage2 = function(d) { return d/1000; };
+ 
+
+    
+  
+// CREATE SVG
+var svg = d3.select('body').append('svg')
+  .attr('width', margin.left + w + margin.right)
+  .attr('height', margin.top + h + margin.bottom)
+  // ADD A GROUP FOR THE SPACE WITHIN THE MARGINS
+  .append('g')
+    .attr('transform', translation(margin.left, margin.top));
+  
+// find the maximum data value on either side
+//  since this will be shared by both of the x-axes
+var maxValue = Math.max(
+  d3.max(exampleData, function(d) { return d.male/1000; }),
+  d3.max(exampleData, function(d) { return d.female/1000; })
+);
+
+var maxValue2 = Math.max(
+  d3.max(exampleData2, function(d) { return d.male/1000; }),
+  d3.max(exampleData2, function(d) { return d.female/1000; })
+);
+  
+  
+  if (maxValue2 >maxValue)
+    {
+      intercambiar();
+      generaPiramidePoblacional();
+    }
+  else
+    {
+// SET UP SCALES
+  
+// the xScale goes from 0 to the width of a region
+//  it will be reversed for the left x-axis
+var xScale = d3.scale.linear()
+  .domain([0, maxValue])
+  .range([0, regionWidth])
+  .nice();
+
+var xScaleLeft = d3.scale.linear()
+  .domain([0, maxValue])
+  .range([regionWidth, 0]);
+
+var xScaleRight = d3.scale.linear()
+  .domain([0, maxValue])
+  .range([0, regionWidth]);
+
+var yScale = d3.scale.ordinal()
+  .domain(exampleData.map(function(d) { return d.group; }))
+  .rangeRoundBands([h,0], 0.1);
+
+
+// SET UP AXES
+var yAxisLeft = d3.svg.axis()
+  .scale(yScale)
+  .orient('right')
+  .tickSize(4,0)
+  .tickPadding(margin.middle-4);
+
+var yAxisRight = d3.svg.axis()
+  .scale(yScale)
+  .orient('left')
+  .tickSize(4,0)
+  .tickFormat('');
+
+var xAxisRight = d3.svg.axis()
+  .scale(xScale)
+  .orient('bottom')
+  .tickFormat(d3.format('#'));
+
+var xAxisLeft = d3.svg.axis()
+  // REVERSE THE X-AXIS SCALE ON THE LEFT SIDE BY REVERSING THE RANGE
+  .scale(xScale.copy().range([pointA, 0]))
+  .orient('bottom')
+  .tickFormat(d3.format('#'));
+
+  var div = d3.select("body")
+	.append("div")  // declare the tooltip div 
+	.attr("class", "tooltip")              // apply the 'tooltip' class
+	.style("opacity", 0);                  // set the opacity to nil
+
+
+  
+// MAKE GROUPS FOR EACH SIDE OF CHART
+// scale(-1,1) is used to reverse the left side so the bars grow left instead of right
+var leftBarGroup = svg.append('g')
+  .attr('transform', translation(pointA, 0) + 'scale(-1,1)');
+var rightBarGroup = svg.append('g')
+  .attr('transform', translation(pointB, 0));
+
+// DRAW AXES
+svg.append('g')
+  .attr('class', 'axis y left')
+  .attr('transform', translation(pointA, 0))
+  .call(yAxisLeft)
+  .selectAll('text')
+  .style('text-anchor', 'middle');
+
+svg.append('g')
+  .attr('class', 'axis y right')
+  .attr('transform', translation(pointB, 0))
+  .call(yAxisRight);
+
+svg.append('g')
+  .attr('class', 'axis x left')
+  .attr('transform', translation(0, h))
+  .call(xAxisLeft);
+
+
+svg.append('g')
+  .attr('class', 'axis x right')
+  .attr('transform', translation(pointB, h))
+  .call(xAxisRight);
+
+// DRAW BARS
+  
+  leftBarGroup.selectAll('.bar.left')
+  .data(exampleData)
+  .enter().append('rect')
+    .attr('class', 'bar left')
+    .attr('x', 0)
+    .attr('y', function(d) { return yScale(d.group); })
+    .attr('width', function(d) { return xScale(percentage(d.male)); })
+    .attr('height', yScale.rangeBand()-2)
+.on("mouseover", function(d) {		
+			div.transition()
+				.duration(200)	
+				.style("opacity", 0.9);	
+			div	.html(gethtmlContorno(d))
+				.style("left", (d3.event.pageX) + "px")			 
+				.style("top", (d3.event.pageY - 28) + "px");
+     d3.select(this).attr("x", 0).style("fill", "#97a8d2");
+			})
+      .on("mouseout", function(d) {       
+            div.transition()        
+                .duration(500)      
+                .style("opacity", 0); 
+  d3.select(this).attr("x", 0).style("fill", "white");})
+  ;
+
+rightBarGroup.selectAll('.bar.right')
+  .data(exampleData)
+  .enter().append('rect')
+    .attr('class', 'bar right')
+    .attr('x', 0)
+    .attr('y', function(d) { return yScale(d.group); })
+    .attr('width', function(d) { return xScale(percentage(d.female)); })
+    .attr('height', yScale.rangeBand()-2)
+.on("mouseover", function(d) {		
+			div.transition()
+				.duration(200)	
+				.style("opacity", 0.9);	
+			div	.html(gethtmlContorno(d))	 				.style("left", (d3.event.pageX) + "px")			 
+				.style("top", (d3.event.pageY - 28) + "px");
+  d3.select(this).attr("x", 0).style("fill", "#e19ac4");
+			})
+      .on("mouseout", function(d) {       
+            div.transition()        
+                .duration(500)      
+                .style("opacity", 0); 
+d3.select(this).attr("x", 0).style("fill", "white");
+});
+  
+  leftBarGroup.selectAll('.bar.left2')
+  .data(exampleData2)
+  .enter().append('rect')
+    .attr('class', 'bar left2')
+    .attr('x', 0)
+    .attr('y', function(d) { return yScale(d.group); })
+    .attr('width', function(d) { return xScale(percentage(d.male)); })
+    .attr('height', yScale.rangeBand()-2)
+   .on("mouseover", function(d) {		
+			div.transition()
+				.duration(200)	
+				.style("opacity", 0.9);	
+			div	.html(gethtmlRelleno(d))	            .style("left", (d3.event.pageX) + "px")			 
+				.style("top", (d3.event.pageY - 28) + "px");
+     d3.select(this).attr("x", 0).style("fill", "#1a316b");
+			})
+      .on("mouseout", function(d) {       
+            div.transition()        
+                .duration(500)      
+                .style("opacity", 0); 
+d3.select(this).attr("x", 0).style("fill", "#97a8d2");
+  });
+
+
+rightBarGroup.selectAll('.bar.right2')
+  .data(exampleData2)
+  .enter().append('rect')
+    .attr('class', 'bar right2')
+    .attr('x', 0)
+    .attr('y', function(d) { return yScale(d.group); })
+    .attr('width', function(d) { return xScale(percentage(d.female)); })
+    .attr('height', yScale.rangeBand()-2)
+.on("mouseover", function(d) {		
+			div.transition()
+				.duration(200)	
+				.style("opacity", 0.9);	
+			div	.html(gethtmlRelleno(d))
+				.style("left", (d3.event.pageX) + "px")			 
+				.style("top", (d3.event.pageY - 28) + "px");
+   d3.select(this).attr("x", 0).style("fill", "#c71585");
+			})
+      .on("mouseout", function(d) {       
+            div.transition()        
+                .duration(500)      
+                .style("opacity", 0); 
+d3.select(this).attr("x", 0).style("fill", "#e19ac4");
+});
+
+svg.append("text")     
+        .attr("x", w /2 )
+        .attr("y",  0 )
+        .style("text-anchor", "middle")
+        .text("Edad");
+
+svg.append("text")     
+        .attr("x", w /2 )
+        .attr("y",  h + 17 )
+        .style("text-anchor", "middle")
+        .text(" x mil");
+  
+svg.append("text")     
+        .attr("x", (w /2)-100 )
+        .attr("y",  0 )
+        .style("text-anchor", "middle")
+        .text("Hombres");
+
+svg.append("text")     
+        .attr("x", (w /2)+100 )
+        .attr("y",  0 )
+        .style("text-anchor", "middle")
+        .text("Mujeres");
+    }
+}
+
+
+function translation(x,y) {
+  return 'translate(' + x + ',' + y + ')';
+  
+}
+  
+function getPopulation(x,fecha)
+ {
+   var exampleData = [];
+   
+   if (x == 1) //el Salto
+     {
+  var data1 = elsalto;
+  exampleData = data1.filter(function(d) { return d.fecha==fecha; });
+     }
+
+   if (x == 2) //Guadalajara
+     {
+       var data2 = guadalajara;
+  exampleData = data2.filter(function(d) { return d.fecha==fecha; });
+    }
+
+      if (x == 3) //Ixtlahuacan
+     {
+       var data3 = ixtlahuacan;
+  exampleData = data3.filter(function(d) { return d.fecha==fecha; });
+    }
+
+      if (x == 4) //Juanacatlán
+     {
+       var data4 = juanacatlan;
+  exampleData = data4.filter(function(d) { return d.fecha==fecha; });
+    }
+
+      if (x == 5) //Tlaquepaque
+     {
+       var data5 = tlaquepaque;
+  exampleData = data5.filter(function(d) { return d.fecha==fecha; });
+    }
+
+      if (x == 6) //Tlajomulco
+     {
+       var data6 = tlajomulco;
+  exampleData = data6.filter(function(d) { return d.fecha==fecha; });
+    }
+
+      if (x == 7) //Tonala
+     {
+       var data7 = tonala;
+  exampleData = data7.filter(function(d) { return d.fecha==fecha; });
+    }
+
+      if (x == 8) //Zapopan
+     {
+       var data8 = zapopan;
+  exampleData = data8.filter(function(d) { return d.fecha==fecha; });
+    }
+   return exampleData;  
+ }
+  
+
+function gethtmlContorno(d)
+{
+  var htmldata = '<table border="0" cellpadding="1" cellspacing="1" style="width: 150px;"><tbody><tr><td style="width: 20px; border: 2px solid #1a316b;">&nbsp;</td><td style="width: 50px;">Hombres</td><td style="width: 70px;">'+addCommas(d.male)+'</td></tr><tr><td style="width: 20px; border: 2px solid #c71585; ">&nbsp;</td><td style="width: 50px;">Mujeres</td><td>'+addCommas(d.female)+'</td></tr></tbody></table>';
+  
+  return htmldata;
+}
+
+function gethtmlRelleno(d)
+{
+  var htmldata = '<table border="0" cellpadding="1" cellspacing="1" style="width: 150px;">	<tbody> <tr> <td style="width: 20px; background-color: rgb(151, 168, 210);">&nbsp;</td> <td style="width: 50px;">Hombres</td> <td style="width: 70px;">'+addCommas(d.male)+'</td> </tr> <tr> <td style="width: 20px; background-color: rgb(225, 154, 196); ">&nbsp;</td><td style="width: 50px;">Mujeres</td> <td>'+addCommas(d.female)+'</td> </tr> </tbody> </table>';
+  
+  return htmldata;
+}
+
+function addCommas(nStr)
+{
+	nStr += '';
+	x = nStr.split('.');
+	x1 = x[0];
+	x2 = x.length > 1 ? '.' + x[1] : '';
+	var rgx = /(\d+)(\d{3})/;
+	while (rgx.test(x1)) {
+		x1 = x1.replace(rgx, '$1' + ',' + '$2');
+	}
+	return x1 + x2;
+}
+</script>
+</body>
+</html>
